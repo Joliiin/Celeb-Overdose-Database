@@ -1,0 +1,102 @@
+echo "# Celeb-Overdose-Database" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git remote add origin https://github.com/Joliiin/Celeb-Overdose-Database.git
+git push -u origin master
+
+-- Select Database
+USE celeb_overdose;
+
+
+/* Query 1, Requirements Fulfilled: A (JOIN), B (WHERE)
+Out of the 40 celebrities, how many were female, between the ages of 21-40 and died outside of California?
+*/
+DROP VIEW IF EXISTS query_one;
+CREATE VIEW query_one AS
+SELECT
+	CONCAT(first_name, ' ', last_name) AS 'Female Celebs',
+	age_at_death AS 'Age at Time of Death', 
+	place_description AS 'Place of Death', 
+    cause_description AS 'Cause of Death'
+FROM celebrity
+	JOIN gender ON celebrity.gender_gender_id = gender.gender_id
+	JOIN place_of_death ON celebrity.place_of_death_place_id = place_of_death.place_id
+    JOIN cause_of_death ON celebrity.cause_of_death_cause_id = cause_of_death.cause_id
+WHERE gender_id = 1 AND age_at_death BETWEEN 21 AND 40 AND place_description != 'California'
+ORDER BY age_at_death ASC;
+
+
+/* Query 2, Requirements Fulfilled: A (JOIN), B (WHERE), C (COUNT)
+How many celebrities died from a heroin overdose?
+*/
+DROP VIEW IF EXISTS query_two;
+CREATE VIEW query_two AS
+SELECT
+COUNT(*) AS '# of Celebrity Deaths (Heroin Overdose)'
+FROM celebrity JOIN cause_of_death
+	ON celebrity.cause_of_death_cause_id = cause_of_death.cause_id
+WHERE cause_id = 4;
+
+
+
+/* Query 3, Requirements Fulfilled: A (JOIN), B (HAVING), C (GROUP BY, AVERAGE)
+What is the average net worth for all celebrities based on the cause of death?
+*/
+DROP VIEW IF EXISTS query_three;
+CREATE VIEW query_three AS
+SELECT cause.cause_description as 'Cause of Death' ,format(avg(intfac.net_worth),2) as 'Average Net Worth'
+FROM cause_of_death cause
+LEFT JOIN celebrity celeb on cause.cause_id = celeb.cause_of_death_cause_id 
+LEFT JOIN interesting_facts intfac on celeb.celebrity_id = intfac.celebrity_celebrity_id
+GROUP BY cause.cause_description
+HAVING AVG (intfac.net_worth) is NOT NULL
+ORDER BY cause.cause_description;
+
+
+
+/* Query 4, Requirements Fulfilled: A (JOIN), B (WHERE), D (Linking Table)
+How many of the celebrities were biracial (African-American/Caucasian) and under the age of 50?
+*/
+DROP VIEW IF EXISTS query_four;
+CREATE VIEW query_four AS
+SELECT
+	DISTINCT(CONCAT(first_name, ' ', last_name)) AS 'Biracial Celebrities', age_at_death AS 'Age at Death'
+FROM race_has_celebrity
+	JOIN celebrity ON celebrity.celebrity_id = race_has_celebrity.celebrity_celebrity_id
+WHERE age_at_death < 50 AND race_has_celebrity.race_race_id BETWEEN 1 AND 2;
+
+
+
+/* Query 5, Requirements Fulfilled: A (JOIN), B (WHERE), C (MAX), E (Subquery)
+Out of all the celebrities, which are them were male and died during the 21st century?;  And also, what was their zodiac sign and total worth at the time of their death?
+List their death by the most recent year.
+*/
+DROP VIEW IF EXISTS query_five;
+CREATE VIEW query_five AS
+SELECT
+	CONCAT(first_name, ' ', last_name) AS 'Male Celebs', zodiac_sign AS 'Zodiac Sign', FORMAT((net_worth),2) AS 'Net Worth',
+    CONCAT(death_month, ' ', death_day, ', ', death_year) AS 'Date of Death',
+		(SELECT MAX(death_year) FROM death
+			WHERE celebrity.celebrity_id = death.celebrity_celebrity_id) AS 'Death Year'
+		FROM celebrity 
+        JOIN interesting_facts ON celebrity.celebrity_id = interesting_facts.celebrity_celebrity_id
+        JOIN death ON celebrity.celebrity_id = death.celebrity_celebrity_id
+        JOIN gender ON celebrity.gender_gender_id = gender.gender_id
+        WHERE gender_id = 2 AND death_year >= 2001
+        ORDER BY death_year DESC;
+        
+        
+/* Query 6, Requirements Fulfilled: A (JOIN), B (WHERE)
+Out of the celebrities who died from a overdose, which of them didn't have children?
+*/
+DROP VIEW IF EXISTS query_six;
+CREATE VIEW query_six AS
+SELECT DISTINCT celebrity.celebrity_id AS 'Celebrity ID', (CONCAT(first_name, ' ', last_name)) AS 'Celebrity Name',
+age_at_death AS 'Age of Death', gender_type AS 'Gender', cause_description AS 'Cause of Death'
+FROM celebrity 
+JOIN gender ON celebrity.gender_gender_id = gender.gender_id
+JOIN cause_of_death ON celebrity.cause_of_death_cause_id = cause_of_death.cause_id
+JOIN children
+WHERE celebrity.celebrity_id NOT IN (SELECT child.celebrity_id FROM children AS child)
+ORDER BY celebrity.celebrity_id;
